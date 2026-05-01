@@ -217,8 +217,13 @@ function resetPreview() {
   document.getElementById('aprovado').style.display = 'none';
 }
 
+let debounceTimer = null;
+
 function updateSlider(axis, val) {
   document.getElementById('val'+axis).textContent = val+'%';
+  if (!logoFile) return;
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => gerarMaquete(), 600);
 }
 
 async function gerarMaquete() {
