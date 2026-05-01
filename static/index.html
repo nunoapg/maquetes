@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Maquetes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; }
+
+  header { background: white; border-bottom: 1px solid #e5e5e5; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header span { font-size: 13px; color: #888; }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  .panel { background: white; border-radius: 12px; border: 1px solid #e5e5e5; padding: 24px; }
+  .panel h2 { font-size: 15px; font-weight: 600; margin-bottom: 20px; color: #111; }
+
+  .upload-zone { border: 2px dashed #d0d0d0; border-radius: 10px; padding: 32px 16px; text-align: center; cursor: pointer; transition: all 0.15s; }
+  .upload-zone:hover, .upload-zone.drag { border-color: #534AB7; background: #f5f4ff; }
+  .upload-zone .icon { font-size: 28px; margin-bottom: 8px; color: #aaa; }
+  .upload-zone p { font-size: 14px; color: #555; margin-bottom: 4px; }
+  .upload-zone small { font-size: 12px; color: #aaa; }
+
+  .produto-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .produto-btn { border: 2px solid #e5e5e5; border-radius: 8px; padding: 12px 8px; text-align: center; cursor: pointer; font-size: 13px; color: #555; transition: all 0.12s; background: white; }
+  .produto-btn:hover { border-color: #534AB7; color: #534AB7; }
+  .produto-btn.active { border-color: #534AB7; background: #f5f4ff; color: #534AB7; font-weight: 600; }
+  .produto-btn .emoji { font-size: 22px; display: block; margin-bottom: 4px; }
+
+  .slider-group { margin-bottom: 16px; }
+  .slider-group label { font-size: 13px; color: #666; display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .slider-group label span { font-weight: 600; color: #111; }
+  input[type=range] { width: 100%; accent-color: #534AB7; }
+
+  .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.12s; margin-top: 8px; }
+  .btn-primary { background: #534AB7; color: white; }
+  .btn-primary:hover { background: #3C3489; }
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-secondary { background: white; color: #534AB7; border: 2px solid #534AB7; }
+  .btn-secondary:hover { background: #f5f4ff; }
+
+  .preview-box { min-height: 340px; background: #f9f9f7; border-radius: 10px; border: 1px solid #e5e5e5; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  .preview-box img { max-width: 100%; max-height: 380px; object-fit: contain; }
+  .preview-placeholder { text-align: center; color: #bbb; }
+  .preview-placeholder .icon { font-size: 40px; margin-bottom: 8px; }
+  .preview-placeholder p { font-size: 13px; }
+
+  .loading { position: absolute; inset: 0; background: rgba(255,255,255,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  .spinner { width: 32px; height: 32px; border: 3px solid #e5e5e5; border-top-color: #534AB7; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .info-box { background: #f5f4ff; border: 1px solid #d0ccf5; border-radius: 8px; padding: 14px; margin-top: 14px; font-size: 13px; }
+  .info-box strong { color: #3C3489; display: block; margin-bottom: 6px; }
+  .info-box p { color: #534AB7; line-height: 1.6; }
+
+  .aprovado { background: #f0faf5; border: 2px solid #1D9E75; border-radius: 10px; padding: 20px; text-align: center; display: none; }
+  .aprovado h3 { color: #0F6E56; font-size: 18px; margin-bottom: 6px; }
+  .aprovado p { color: #1D9E75; font-size: 14px; }
+
+  .logo-preview { width: 60px; height: 60px; object-fit: contain; border-radius: 6px; border: 1px solid #e5e5e5; }
+  .logo-info { display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f7; border-radius: 8px; margin-bottom: 16px; }
+  .logo-info span { font-size: 13px; color: #555; flex: 1; }
+  .logo-info button { font-size: 12px; color: #999; background: none; border: none; cursor: pointer; }
+
+  @media (max-width: 680px) {
+    .container { grid-template-columns: 1fr; padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="width:32px;height:32px;background:#534AB7;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px">M</div>
+  <div>
+    <h1>Simulador de Maquetes</h1>
+    <span>Visualiza o teu logo no produto antes de encomendar</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- LEFT: Controls -->
+  <div>
+    <div class="panel" style="margin-bottom:20px">
+      <h2>1. Escolhe o produto</h2>
+      <div class="produto-grid">
+        <button class="produto-btn active" data-produto="avental" onclick="selectProduto(this)">
+          <span class="emoji">👨‍🍳</span>Avental
+        </button>
+        <button class="produto-btn" data-produto="caneca" onclick="selectProduto(this)">
+          <span class="emoji">☕</span>Caneca
+        </button>
+        <button class="produto-btn" data-produto="saco" onclick="selectProduto(this)">
+          <span class="emoji">🛍️</span>Saco
+        </button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px">
+      <h2>2. Carrega o teu logo</h2>
+      <div id="uploadZone" class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">⬆️</div>
+        <p>Clica ou arrasta o logo aqui</p>
+        <small>PNG, SVG, JPG — fundo transparente recomendado</small>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this)">
+      <div id="logoInfo" style="display:none" class="logo-info">
+        <img id="logoThumb" class="logo-preview">
+        <span id="logoNome"></span>
+        <button onclick="resetLogo()">✕ trocar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>3. Ajusta a posição</h2>
+      <div class="slider-group">
+        <label>Posição horizontal <span id="valX">50%</span></label>
+        <input type="range" id="slX" min="0" max="100" value="50" oninput="updateSlider('X',this.value)">
+      </div>
+      <div class="slider-group">
+        <label>Posição vertical <span id="valY">50%</span></label>
+        <input type="range" id="slY" min="0" max="100" value="50" oninput="updateSlider('Y',this.value)">
+      </div>
+      <div class="slider-group">
+        <label>Tamanho do logo <span id="valT">30%</span></label>
+        <input type="range" id="slT" min="5" max="90" value="30" oninput="updateSlider('T',this.value)">
+      </div>
+
+      <button class="btn btn-primary" id="btnGerar" onclick="gerarMaquete()" disabled>
+        Gerar maquete
+      </button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Preview -->
+  <div>
+    <div class="panel">
+      <h2>Pré-visualização</h2>
+      <div class="preview-box" id="previewBox">
+        <div class="preview-placeholder">
+          <div class="icon">🖼️</div>
+          <p>A maquete aparece aqui</p>
+        </div>
+        <div class="loading" id="loading" style="display:none">
+          <div class="spinner"></div>
+          <span style="font-size:13px;color:#666">A gerar maquete...</span>
+        </div>
+      </div>
+
+      <div id="infoBox" class="info-box" style="display:none">
+        <strong>Dimensões da impressão</strong>
+        <p id="infoDim"></p>
+      </div>
+
+      <div id="aprovado" class="aprovado">
+        <h3>✅ Maquete aprovada!</h3>
+        <p>Entraremos em contacto em breve para confirmar o pedido.</p>
+      </div>
+
+      <div id="btnAprovar" style="display:none;margin-top:14px">
+        <button class="btn btn-primary" onclick="aprovar()">Aprovar esta maquete ✓</button>
+        <button class="btn btn-secondary" style="margin-top:8px" onclick="gerarMaquete()">Gerar nova versão</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let logoFile = null;
+let produtoAtual = 'avental';
+let ultimaMaquete = null;
+const API = '';  // empty = same origin
+
+function selectProduto(btn) {
+  document.querySelectorAll('.produto-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  produtoAtual = btn.dataset.produto;
+  resetPreview();
+}
+
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  logoFile = file;
+  const url = URL.createObjectURL(file);
+  document.getElementById('logoThumb').src = url;
+  document.getElementById('logoNome').textContent = file.name;
+  document.getElementById('uploadZone').style.display = 'none';
+  document.getElementById('logoInfo').style.display = 'flex';
+  document.getElementById('btnGerar').disabled = false;
+}
+
+function resetLogo() {
+  logoFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('logoInfo').style.display = 'none';
+  document.getElementById('btnGerar').disabled = true;
+  resetPreview();
+}
+
+function resetPreview() {
+  document.getElementById('previewBox').innerHTML = `
+    <div class="preview-placeholder">
+      <div class="icon">🖼️</div>
+      <p>A maquete aparece aqui</p>
+    </div>
+    <div class="loading" id="loading" style="display:none">
+      <div class="spinner"></div>
+      <span style="font-size:13px;color:#666">A gerar maquete...</span>
+    </div>`;
+  document.getElementById('infoBox').style.display = 'none';
+  document.getElementById('btnAprovar').style.display = 'none';
+  document.getElementById('aprovado').style.display = 'none';
+}
+
+function updateSlider(axis, val) {
+  document.getElementById('val'+axis).textContent = val+'%';
+}
+
+async function gerarMaquete() {
+  if (!logoFile) return;
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('btnAprovar').style.display = 'none';
+  document.getElementById('aprovado').style.display = 'none';
+
+  const form = new FormData();
+  form.append('logo', logoFile);
+  form.append('produto', produtoAtual);
+  form.append('pos_x', document.getElementById('slX').value);
+  form.append('pos_y', document.getElementById('slY').value);
+  form.append('tamanho', document.getElementById('slT').value);
+
+  try {
+    const res = await fetch(API + '/gerar-maquete', { method: 'POST', body: form });
+    const data = await res.json();
+
+    if (data.erro) {
+      alert('Erro: ' + data.erro);
+      document.getElementById('loading').style.display = 'none';
+      return;
+    }
+
+    ultimaMaquete = data;
+    const img = document.createElement('img');
+    img.src = data.url + '?t=' + Date.now();
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '380px';
+    img.style.objectFit = 'contain';
+
+    const box = document.getElementById('previewBox');
+    box.innerHTML = '';
+    box.appendChild(img);
+
+    const loading2 = document.createElement('div');
+    loading2.id = 'loading';
+    loading2.className = 'loading';
+    loading2.style.display = 'none';
+    loading2.innerHTML = '<div class="spinner"></div><span style="font-size:13px;color:#666">A gerar maquete...</span>';
+    box.appendChild(loading2);
+
+    document.getElementById('infoBox').style.display = 'block';
+    document.getElementById('infoDim').innerHTML =
+      `Logo: <strong>${data.logo_cm.largura} × ${data.logo_cm.altura} cm</strong><br>` +
+      `Área de impressão: ${data.dimensoes.area_largura_cm} × ${data.dimensoes.area_altura_cm} cm`;
+
+    document.getElementById('btnAprovar').style.display = 'block';
+
+  } catch(e) {
+    alert('Erro de ligação ao servidor. Tenta novamente.');
+  }
+  document.getElementById('loading').style.display = 'none';
+}
+
+function aprovar() {
+  document.getElementById('btnAprovar').style.display = 'none';
+  document.getElementById('aprovado').style.display = 'block';
+  // Aqui podes adicionar: enviar email, guardar na base de dados, etc.
+  console.log('Aprovado:', ultimaMaquete);
+}
+
+// Drag and drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('fileInput').files = dt.files;
+    handleFile(document.getElementById('fileInput'));
+  }
+});
+</script>
+</body>
+</html>
